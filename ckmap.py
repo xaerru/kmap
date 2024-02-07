@@ -1,4 +1,5 @@
 import math
+import copy
 from itertools import chain
 import networkx as nx
 
@@ -84,33 +85,68 @@ class kmap:
         return sb==smemo
 
     def check_all_combinations(self, c, i, j):
+        if j>len(self.memo):
+            return
         if i==len(self.groups):
             subset = []
             for x in range(j):
-                if self.isPowerOfTwo(len(c[x])):
-                    subset.append(c[x])
+                subset.append(c[x])
             if self.check_all_ones(subset):
                 self.res.append(subset)
             return
+
+        for k in range(len(self.groups)):
+            for g in self.groups:
+                if k>=len(self.groups):
+                    k=0
+                if g!=self.groups[k]:
+                    if set(self.groups[k]).issubset(set(g)):
+                        self.groups.remove(self.groups[k])
 
         c[j]=self.groups[i]
         self.check_all_combinations(c, i+1, j+1)
         self.check_all_combinations(c, i+1, j)
 
-    def get_minimal_groups(self):
+    def make_all_groups(self):
         for x in range(4):
             for y in range(4):
                 if self.coor_to_num(x, y) not in self.memo:
                     self.make_groups(x, y)
                 self.groups.append([self.coor_to_num(x,y)]*2)
 
+    def get_minimal_groups(self):
+        self.make_all_groups();
+
         G=nx.DiGraph()
         G.add_edges_from([(g[0], g[1]) for g in self.groups])
 
-        for g in self.groups:
-            print(f"{g[0]}-{g[1]}")
-        self.groups = [list(i) for i in set([tuple(sorted(x)) for x in list(nx.simple_cycles(G))])]
-        print(self.groups)
+        m = copy.deepcopy(self.groups)
+
+        # for g in self.groups:
+            # print(f"{g[0]}-{g[1]}")
+        self.groups = [list(i) for i in set([tuple(sorted(x)) for x in list(nx.simple_cycles(G)) if self.isPowerOfTwo(len(x))])]
+
+        id = 0
+        while True:
+            if id==len(self.groups):
+                break
+            g = self.groups[id]
+            if len(g)==8:
+                o = []
+                for i in g:
+                    c = 0
+                    for j in g:
+                        if i!=j:
+                            if [i,j] in m or [j, i] in m:
+                                c+=1
+                    o.append(c)
+                for x in o:
+                    if x<3:
+                        self.groups.remove(g)
+                        id-=1
+                        break
+            id+=1
+
 
         l = [0 for _ in range(len(self.groups))]
         self.check_all_combinations(l, 0, 0)
@@ -128,8 +164,13 @@ class kmap:
 
 
 if __name__=="__main__":
-    k = kmap([[0,1,1,0],
-              [0,1,1,0],
-              [0,1,1,0],
-              [0,0,0,0]])
+    k = kmap([[1,0,0,1],
+              [1,1,0,1],
+              [0,1,0,1],
+              [1,1,0,1]])
     print(k.get_minimal_groups())
+    # k.make_all_groups()
+    # # In each flood do the following
+    # for g in k.groups:
+        # k.groups.remove([g[1],g[0]])
+        # print(f"{g[0]}-{g[1]}")
