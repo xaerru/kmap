@@ -84,10 +84,8 @@ class kmap:
         sb = set(chain.from_iterable(subset))
         return sb==smemo
 
-    def check_all_combinations(self, c, i, j):
-        if j>len(self.memo):
-            return
-        if i==len(self.groups):
+    def check_all_combinations(self, sg, c, i, j):
+        if i==len(sg):
             subset = []
             for x in range(j):
                 subset.append(c[x])
@@ -95,24 +93,33 @@ class kmap:
                 self.res.append(subset)
             return
 
-        for k in range(len(self.groups)):
-            for g in self.groups:
-                if k>=len(self.groups):
-                    k=0
-                if g!=self.groups[k]:
-                    if set(self.groups[k]).issubset(set(g)):
-                        self.groups.remove(self.groups[k])
+        me = []
+        for k in range(len(sg)):
+            for gk in range(len(sg)):
+                if gk!=k:
+                    if set(sg[k]).issubset(set(sg[gk])):
+                        me.append(sg[k])
+        for m in me:
+            if m in sg:
+                sg.remove(m)
+                        
 
-        c[j]=self.groups[i]
-        self.check_all_combinations(c, i+1, j+1)
-        self.check_all_combinations(c, i+1, j)
+        if i>=len(sg):
+            i=0
+        if j>=len(sg):
+            j=0
+
+        c[j]=sg[i]
+        self.check_all_combinations(sg, c, i+1, j+1)
+        self.check_all_combinations(sg, c, i+1, j)
 
     def make_all_groups(self):
         for x in range(4):
             for y in range(4):
                 if self.coor_to_num(x, y) not in self.memo:
                     self.make_groups(x, y)
-                self.groups.append([self.coor_to_num(x,y)]*2)
+                if self.kmap[y][x]==1:
+                    self.groups.append([self.coor_to_num(x,y)]*2)
 
     def get_minimal_groups(self):
         self.make_all_groups();
@@ -149,11 +156,10 @@ class kmap:
 
 
         l = [0 for _ in range(len(self.groups))]
-        self.check_all_combinations(l, 0, 0)
+        self.check_all_combinations(copy.deepcopy(self.groups), l, 0, 0)
 
 
-        # print(self.res)
-        minl = 1000000
+        minl = 100000000
         mini = 0
         for xi,x in enumerate(self.res):
             if len(x)<minl:
@@ -164,10 +170,10 @@ class kmap:
 
 
 if __name__=="__main__":
-    k = kmap([[1,0,0,1],
-              [1,1,0,1],
-              [0,1,0,1],
-              [1,1,0,1]])
+    k = kmap([[1,1,1,1],
+              [1,1,1,1],
+              [1,1,1,0],
+              [1,0,1,1]])
     print(k.get_minimal_groups())
     # k.make_all_groups()
     # # In each flood do the following
