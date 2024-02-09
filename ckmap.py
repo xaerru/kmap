@@ -131,8 +131,8 @@ class kmap:
         self.make_all_groups();
         # for g in self.groups:
             # self.groups.remove([g[1],g[0]])
-        for g in self.groups:
-            print(f"{g[0]}-{g[1]}")
+        # for g in self.groups:
+            # print(f"{g[0]}-{g[1]}")
         m = []
         adj_list = {}
         for g in self.groups:
@@ -142,24 +142,27 @@ class kmap:
                 adj_list[g[0]].add(g[1])
 
         for k,v in adj_list.items():
-            print(k,v)
+            # print(k,v)
             for n in v:
-                m.append([k, n])
+                if [n,k] not in m:
+                    m.append([k, n])
 
         m2 = []
 
-        for k,v in adj_list.items():
-            for n in v:
-                # Chose the first item 8
-                for i in v:
-                    if i!=n:
-                        l = [x for x in m if x[0]==i and k not in x and n not in x]
-                        for c in l:
-                            if [n, c[1]] in self.groups:
-                                m2.append([k,n,c[0],c[1]])
-                
+        for a,b in map(tuple, m):
+            al = [x for x in adj_list[a] if x!=b and x!=a]
+            bl = [x for x in adj_list[b] if x!=b and x!=a]
+            for pa in al:
+                for pb in bl:
+                    if [pa, pb] in self.groups:
+                        if [pa,pb] in m:
+                            m.remove([pa,pb])
+                        if [pb,pa] in m:
+                            m.remove([pb,pa])
+                        print(a,b,pa,pb)
 
-        for _m in m2:
+
+        for _m in m:
             print(_m)
         return
 
@@ -172,8 +175,8 @@ class kmap:
         m = copy.deepcopy(self.groups)
 
         # print(self.groups)
-        for g in self.groups:
-            print(f"{g[0]}-{g[1]}")
+        # for g in self.groups:
+            # print(f"{g[0]}-{g[1]}")
         # Need to implement custom cycle finding without needing to remove stuff
         self.groups = [list(i) for i in set([tuple(sorted(x)) for x in list(nx.simple_cycles(G)) if self.isPowerOfTwo(len(x))])]
 
@@ -252,8 +255,4 @@ if __name__=="__main__":
                # [1,0,1,1]],
               ])
     print(k.get_minimal_groups())
-    # k.make_all_groups()
-    # # In each flood do the following
-    # for g in k.groups:
-        # k.groups.remove([g[1],g[0]])
-        # print(f"{g[0]}-{g[1]}")
+    # k.make_pairs()
