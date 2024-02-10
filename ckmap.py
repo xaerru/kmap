@@ -131,8 +131,8 @@ class kmap:
         self.make_all_groups();
         # for g in self.groups:
             # self.groups.remove([g[1],g[0]])
-        # for g in self.groups:
-            # print(f"{g[0]}-{g[1]}")
+        for g in self.groups:
+            print(f"{g[0]}-{g[1]}")
         m = []
         adj_list = {}
         for g in self.groups:
@@ -145,25 +145,64 @@ class kmap:
             # print(k,v)
             for n in v:
                 if [n,k] not in m:
-                    m.append([k, n])
+                    m.append((k, n))
 
         m2 = []
 
-        for a,b in map(tuple, m):
+        for a,b in m:
             al = [x for x in adj_list[a] if x!=b and x!=a]
             bl = [x for x in adj_list[b] if x!=b and x!=a]
             for pa in al:
                 for pb in bl:
                     if [pa, pb] in self.groups:
-                        if [pa,pb] in m:
-                            m.remove([pa,pb])
-                        if [pb,pa] in m:
-                            m.remove([pb,pa])
-                        print(a,b,pa,pb)
+                        # if (pa,pb) in m:
+                            # m.remove((pa,pb))
+                        # if (pb,pa) in m:
+                            # m.remove((pb,pa))
+                        m2.append((a,b,pa,pb))
+
+        r = []
+        for lg in m:
+            all_adj_lists = []
+            for g in lg:
+                all_adj_lists.append([x for x in adj_list[g] if x not in lg])
+
+            for c,d in zip(all_adj_lists[0],all_adj_lists[1]):
+                if [c, d] in self.groups:
+                    r.append(tuple(((lg[0], lg[1], c, d))))
+        r2=[]
+        # Make r unique and it'll probably work
+        for lg in r:
+            all_adj_lists = []
+            for g in lg:
+                all_adj_lists.append([x for x in adj_list[g] if x not in lg])
+
+            # print(lg,all_adj_lists)
+            for c,d,e,f in zip(all_adj_lists[0],all_adj_lists[1],all_adj_lists[2],all_adj_lists[3]):
+                print(lg,c,d,e,f)
+                # r2.append(tuple(sorted((lg[0], lg[1], lg[2], lg[3], c, d, e, f))))
+
+        print(set(r2))
 
 
-        for _m in m:
-            print(_m)
+        # m2 = list(dict.fromkeys(m2))
+        # for _m in m:
+            # print(_m)
+        # for _m in m2:
+            # print(_m)
+        # l = [0 for _ in range(len(self.groups))]
+        # f = list(map(list, m+m2))
+        # self.check_all_combinations(copy.deepcopy(f), l, 0, 0)
+
+
+        # minl = 100000000
+        # mini = 0
+        # for xi,x in enumerate(self.res):
+            # if len(x)<minl:
+                # mini=xi
+                # minl = len(x)
+
+        # return self.res[mini]
         return
 
     def get_minimal_groups(self):
@@ -244,15 +283,15 @@ class kmap:
 
 
 if __name__=="__main__":
-    k = kmap([[[1,0,0,1],
+    k = kmap([[[1,1,0,1],
                [1,1,0,1],
-               [1,0,1,1],
-               [1,0,0,1]],
+               [0,1,0,1],
+               [0,1,0,1]],
 
               # [[1,1,0,1],
                # [1,1,1,1],
                # [1,0,1,1],
                # [1,0,1,1]],
               ])
-    print(k.get_minimal_groups())
-    # k.make_pairs()
+    # print(k.get_minimal_groups())
+    print(k.make_pairs())
