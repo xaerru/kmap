@@ -32,7 +32,8 @@ class kmap:
         xy = self.coor_to_num(b,x, y)
 
         for i in range(len(self.kmap)):
-            self.groups.append([xy, self.coor_to_num(i, x, y)])
+            if self.kmap[i][y][x]==1:
+                self.groups.append([xy, self.coor_to_num(i, x, y)])
 
         if x+1==4:
             if self.kmap[b][y][0]==1:
@@ -97,22 +98,6 @@ class kmap:
                 self.res.append(subset)
             return
 
-        me = []
-        for k in range(len(sg)):
-            for gk in range(len(sg)):
-                if gk!=k:
-                    if set(sg[k]).issubset(set(sg[gk])):
-                        me.append(sg[k])
-        for m in me:
-            if m in sg:
-                sg.remove(m)
-                        
-
-        if i>=len(sg):
-            i=0
-        if j>=len(sg):
-            j=0
-
         c[j]=sg[i]
         self.check_all_combinations(sg, c, i+1, j+1)
         self.check_all_combinations(sg, c, i+1, j)
@@ -134,6 +119,7 @@ class kmap:
         # for g in self.groups:
             # print(f"{g[0]}-{g[1]}")
         m = []
+        ones = []
         adj_list = {}
         for g in self.groups:
             adj_list[g[0]]=set()
@@ -144,6 +130,7 @@ class kmap:
 
         for k,v in adj_list.items():
             # print(k,v)
+            ones.append((k,))
             for n in v:
                 if (n,k) not in m:
                     m.append((k, n))
@@ -170,8 +157,18 @@ class kmap:
                     r2.append(tuple(((lg[0], lg[1], lg[2], lg[3], c, d, e, f))))
 
         # print(list(map(list, set(map(tuple, map(sorted, m+r+r2))))))
-        self.groups = (list(set(map(tuple, map(sorted, m+r+r2)))))
+        self.groups = (list(set(map(tuple, map(sorted, ones+m+r+r2)))))
 
+
+        me = []
+        for k in range(len(self.groups)):
+            for gk in range(len(self.groups)):
+                if gk!=k:
+                    if set(self.groups[k]).issubset(set(self.groups[gk])):
+                        me.append(self.groups[k])
+        for m in me:
+            if m in self.groups:
+                self.groups.remove(m)
 
         # print(len(self.groups))
         l = [0 for _ in range(len(self.groups))]
@@ -266,10 +263,10 @@ class kmap:
 
 
 if __name__=="__main__":
-    k = kmap([[[1,1,1,1],
-               [1,1,1,1],
+    k = kmap([[[1,0,0,1],
+               [1,1,0,1],
                [1,0,0,1],
-               [1,0,0,1]],
+               [0,1,0,1]],
 
               [[1,1,0,1],
                [1,1,1,1],
