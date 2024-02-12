@@ -117,7 +117,8 @@ class kmap:
         # for g in self.groups:
             # self.groups.remove([g[1],g[0]])
         # for g in self.groups:
-            # print(f"{g[0]}-{g[1]}")
+            # if g[0]!=g[1]:
+                # print(f"{g[0]}-{g[1]}")
         m = []
         ones = []
         adj_list = {}
@@ -127,6 +128,8 @@ class kmap:
         for g in self.groups:
             if g[0]!=g[1]:
                 adj_list[g[0]].add(g[1])
+        for g in self.groups:
+            adj_list[g[0]]=sorted(adj_list[g[0]])
 
         for k,v in adj_list.items():
             # print(k,v)
@@ -136,29 +139,40 @@ class kmap:
                     m.append((k, n))
 
         r = []
-        for lg in m:
-            all_adj_lists = []
-            for g in lg:
-                all_adj_lists.append([x for x in adj_list[g] if x not in lg])
+        all = ones+m
+        prev = m
+        for _ in range(5):
+            # r = []
+            for lg in prev:
+                all_adj_lists = []
+                for g in lg:
+                    all_adj_lists.append([x for x in adj_list[g] if x not in lg])
+                p = min((map(len, all_adj_lists)))
+                for i in range(p):
+                    t = []
+                    for j in range(len(all_adj_lists)):
+                        t.append(all_adj_lists[j][i])
 
-            for c,d in zip(all_adj_lists[0],all_adj_lists[1]):
-                if [c, d] in self.groups:
-                    r.append(tuple(((lg[0], lg[1], c, d))))
-        r2=[]
-        for lg in r:
-            all_adj_lists = []
-            for g in lg:
-                all_adj_lists.append([x for x in adj_list[g] if x not in lg])
+                    fl = True
+                    if len(set(t))!=len(t):
+                        fl = False
+                        break
+                    # print(lg,t)
+                    f = 0
+                    h = len(t)//2
+                    for f in range(h):
+                        # print(t[f],t[f+h], [t[f],t[f+h]] in self.groups)
+                        if [t[f], t[f+h]] not in self.groups:
+                            fl = False
+                            break
 
-            # print(lg,all_adj_lists)
-            for c,d,e,f in zip(all_adj_lists[0],all_adj_lists[1],all_adj_lists[2],all_adj_lists[3]):
-                if ([c,d] in self.groups and [e,f] in self.groups and [c,e] in self.groups and [d,f] in self.groups):
-                    # print(lg,c,d,e,f)
-                    r2.append(tuple(((lg[0], lg[1], lg[2], lg[3], c, d, e, f))))
-
-        # print(list(map(list, set(map(tuple, map(sorted, m+r+r2))))))
-        self.groups = (list(set(map(tuple, map(sorted, ones+m+r+r2)))))
-
+                    if fl:
+                        r.append(tuple((lg+tuple(t))))
+            prev = r
+            for x in r:
+                all.append(x)
+                
+        self.groups = list(set(map(tuple, map(sorted, all))))
 
         me = []
         for k in range(len(self.groups)):
@@ -185,93 +199,30 @@ class kmap:
         return self.res[mini]
         return
 
-    def get_minimal_groups(self):
-        self.make_all_groups();
-
-        G=nx.DiGraph()
-        G.add_edges_from([(g[0], g[1]) for g in self.groups])
-
-        m = copy.deepcopy(self.groups)
-
-        # print(self.groups)
-        # for g in self.groups:
-            # print(f"{g[0]}-{g[1]}")
-        # Need to implement custom cycle finding without needing to remove stuff
-        self.groups = [list(i) for i in set([tuple(sorted(x)) for x in list(nx.simple_cycles(G)) if self.isPowerOfTwo(len(x))])]
-
-        id = 0
-        while id!=len(self.groups):
-            g = self.groups[id]
-            if len(g)==8:
-                o = []
-                for i in g:
-                    c = 0
-                    for j in g:
-                        if i!=j:
-                            if [i,j] in m or [j, i] in m:
-                                c+=1
-                    o.append(c)
-                for x in o:
-                    if x<3:
-                        self.groups.remove(g)
-                        id-=1
-                        break
-            if len(g)==16:
-                o = []
-                for i in g:
-                    c = 0
-                    for j in g:
-                        if i!=j:
-                            if [i,j] in m or [j, i] in m:
-                                c+=1
-                    o.append(c)
-                for x in o:
-                    if x<4:
-                        self.groups.remove(g)
-                        id-=1
-                        break
-            if len(g)==32:
-                o = []
-                for i in g:
-                    c = 0
-                    for j in g:
-                        if i!=j:
-                            if [i,j] in m or [j, i] in m:
-                                c+=1
-                    o.append(c)
-                for x in o:
-                    if x<5:
-                        self.groups.remove(g)
-                        id-=1
-                        break
-            id+=1
-
-
-        l = [0 for _ in range(len(self.groups))]
-        # print(len(self.groups))
-        self.check_all_combinations(copy.deepcopy(self.groups), l, 0, 0)
-
-
-        minl = 100000000
-        mini = 0
-        for xi,x in enumerate(self.res):
-            if len(x)<minl:
-                mini=xi
-                minl = len(x)
-
-        return self.res[mini]
-
-
 if __name__=="__main__":
     k = kmap([[[1,0,0,1],
-               [1,1,0,1],
                [1,0,0,1],
-               [0,1,0,1]],
-
+               [1,0,0,1],
+               [1,0,0,1]],
+              [[1,0,0,1],
+               [1,0,0,1],
+               [1,0,0,1],
+               [1,0,0,1]],
+              [[0,1,1,1],
+               [0,1,1,1],
+               [0,0,0,1],
+               [0,1,1,1]],
               [[1,1,0,1],
-               [1,1,1,1],
-               [1,0,1,1],
-               [1,0,1,1]],
+               [0,1,1,1],
+               [1,0,0,1],
+               [1,0,0,1]],
+              # [[1,1,0,1],
+               # [0,1,0,1],
+               # [1,1,1,1],
+               # [1,0,1,1]],
+              # [[0,1,0,1],
+               # [0,0,1,1],
+               # [0,0,1,1],
+               # [1,0,1,1]],
               ])
-    # print(k.get_minimal_groups())
     print(k.make_pairs())
