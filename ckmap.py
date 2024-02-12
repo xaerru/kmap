@@ -1,7 +1,5 @@
-import math
 import copy
 from itertools import chain
-import networkx as nx
 
 class kmap:
     kmap = []
@@ -85,22 +83,21 @@ class kmap:
             self.make_groups(b, x, y-1)
 
     def check_all_ones(self, subset):
-        smemo = self.memo
-        sb = set(chain.from_iterable(subset))
-        return sb==smemo
+        return self.memo==set(chain.from_iterable(subset))
 
-    def check_all_combinations(self, sg, c, i, j):
+    # Make it iterative for better performance
+    def check_all_combinations(self, sg, c, i, j, f=False):
         if i==len(sg):
-            subset = []
-            for x in range(j):
-                subset.append(c[x])
+            if f:
+                return
+            subset = [c[x] for x in range(j)]
             if self.check_all_ones(subset):
                 self.res.append(subset)
             return
 
         c[j]=sg[i]
-        self.check_all_combinations(sg, c, i+1, j+1)
-        self.check_all_combinations(sg, c, i+1, j)
+        self.check_all_combinations(sg, c, i+1, j+1, False)
+        self.check_all_combinations(sg, c, i+1, j, True)
 
     def make_all_groups(self):
         for b in range(len(self.kmap)):
@@ -141,7 +138,7 @@ class kmap:
         r = []
         all = ones+m
         prev = m
-        for _ in range(5):
+        for _ in range(2):
             # r = []
             for lg in prev:
                 all_adj_lists = []
@@ -158,8 +155,19 @@ class kmap:
                         fl = False
                         break
                     # print(lg,t)
+                    # Generalize
                     f = 0
                     h = len(t)//2
+                    for f in range(h):
+                        if [t[f], t[f+h]] not in self.groups:
+                            fl = False
+                            break
+                    h = len(t)//4
+                    for f in range(h):
+                        if [t[f], t[f+h]] not in self.groups:
+                            fl = False
+                            break
+                    h = len(t)//8
                     for f in range(h):
                         # print(t[f],t[f+h], [t[f],t[f+h]] in self.groups)
                         if [t[f], t[f+h]] not in self.groups:
@@ -183,6 +191,7 @@ class kmap:
         for m in me:
             if m in self.groups:
                 self.groups.remove(m)
+        print(len(self.groups))
 
         # print(len(self.groups))
         l = [0 for _ in range(len(self.groups))]
@@ -204,9 +213,9 @@ if __name__=="__main__":
                [1,0,0,1],
                [1,0,0,1],
                [1,0,0,1]],
-              [[1,0,0,1],
-               [1,0,0,1],
-               [1,0,0,1],
+              [[1,0,1,1],
+               [1,1,0,1],
+               [1,0,1,1],
                [1,0,0,1]],
               [[0,1,1,1],
                [0,1,1,1],
@@ -216,6 +225,14 @@ if __name__=="__main__":
                [0,1,1,1],
                [1,0,0,1],
                [1,0,0,1]],
+              # [[0,1,1,1],
+               # [0,1,1,1],
+               # [0,0,0,1],
+               # [0,1,1,1]],
+              # [[1,1,0,1],
+               # [0,1,1,1],
+               # [1,0,0,1],
+               # [1,0,0,1]],
               # [[1,1,0,1],
                # [0,1,0,1],
                # [1,1,1,1],
