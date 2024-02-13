@@ -1,4 +1,5 @@
 import copy
+import math
 from itertools import chain
 
 class kmap:
@@ -6,16 +7,17 @@ class kmap:
     groups = []
     memo = set()
     res = []
+    nbit = 0
+    letters = []
 
     def __init__(self, kmap):
         self.kmap = kmap
+        self.nbit = 4+math.floor(math.log(len(kmap))/math.log(2))
+        self.letters = [chr(x) for x in range(64+self.nbit,64, -1)]
 
     def binary_to_gray(self, n):
         n ^= (n >> 1)
         return n
-
-    def isPowerOfTwo(self, x):
-        return (x and (not(x & (x - 1))) )
 
     def coor_to_num(self, b, x, y):
         b *= 16
@@ -23,6 +25,27 @@ class kmap:
             return b+self.binary_to_gray((x*4+y))
         else:
             return b+self.binary_to_gray(x*4+(3-y))
+
+    def to_letter(self, n):
+        r = []
+        for xi,x in enumerate(bin(n)[2:].zfill(self.nbit)):
+            if x=="1":
+                r.append(self.letters[xi])
+            else:
+                r.append(self.letters[xi]+"'")
+        return r
+
+    def group_to_letter(self, group):
+        r = []
+        for el in group:
+            r.append(set(self.to_letter(el)))
+        return ".".join(sorted(r[0].intersection(*r)))
+
+    def sol_to_letter(self, sol):
+        r = []
+        for g in sol:
+            r.append(self.group_to_letter(g))
+        return " + ".join(r)
 
     def make_groups(self, b, x, y):
         if self.kmap[b][y][x]==0 or self.coor_to_num(b,x,y) in self.memo:
@@ -85,7 +108,6 @@ class kmap:
     def check_all_ones(self, subset):
         return self.memo==set(chain.from_iterable(subset))
 
-    # Make it iterative for better performance
     def check_all_combinations(self, sg, c, i, j, f=False):
         if i==len(sg):
             if f:
@@ -138,7 +160,7 @@ class kmap:
         r = []
         all = ones+m
         prev = m
-        for _ in range(2):
+        for _ in range(5):
             # r = []
             for lg in prev:
                 all_adj_lists = []
@@ -156,7 +178,6 @@ class kmap:
                         break
                     # print(lg,t)
                     # Generalize
-                    f = 0
                     h = len(t)//2
                     for f in range(h):
                         if [t[f], t[f+h]] not in self.groups:
@@ -168,6 +189,13 @@ class kmap:
                             fl = False
                             break
                     h = len(t)//8
+                    for f in range(h):
+                        # print(t[f],t[f+h], [t[f],t[f+h]] in self.groups)
+                        if [t[f], t[f+h]] not in self.groups:
+                            fl = False
+                            break
+
+                    h = len(t)//16
                     for f in range(h):
                         # print(t[f],t[f+h], [t[f],t[f+h]] in self.groups)
                         if [t[f], t[f+h]] not in self.groups:
@@ -206,18 +234,17 @@ class kmap:
                 minl = len(x)
 
         return self.res[mini]
-        return
 
 if __name__=="__main__":
     k = kmap([[[1,0,0,1],
                [1,0,0,1],
                [1,0,0,1],
                [1,0,0,1]],
-              [[1,0,1,1],
+              [[1,0,0,1],
                [1,1,0,1],
-               [1,0,1,1],
+               [1,1,0,1],
                [1,0,0,1]],
-              [[0,1,1,1],
+              [[0,1,0,1],
                [0,1,1,1],
                [0,0,0,1],
                [0,1,1,1]],
@@ -242,4 +269,5 @@ if __name__=="__main__":
                # [0,0,1,1],
                # [1,0,1,1]],
               ])
-    print(k.make_pairs())
+    sol = k.make_pairs()
+    print(k.sol_to_letter(sol))
