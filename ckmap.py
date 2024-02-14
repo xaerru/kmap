@@ -244,7 +244,7 @@ class kmap:
         for m in me:
             if m in self.groups:
                 self.groups.remove(m)
-        print(len(self.groups))
+        print("Length of all possible groups:", len(self.groups))
 
         # print(len(self.groups))
         l = [0 for _ in range(len(self.groups))]
@@ -303,6 +303,6 @@ if __name__=="__main__":
                # [1,0,1,1]],
               ])
     # When values entered default remaining to don't care
-    sol = k.make_pairs()
-    print(sol)
-    print(k.sol_to_letter(sol))
+    # sol = k.make_pairs()
+    # print(sol)
+    # print(k.sol_to_letter(sol))
