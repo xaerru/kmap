@@ -6,6 +6,7 @@ class kmap:
     kmap = []
     groups = []
     memo = set()
+    ones = set()
     res = []
     nbit = 0
     letters = []
@@ -19,12 +20,34 @@ class kmap:
         n ^= (n >> 1)
         return n
 
+    def gray_to_binary(self, n):
+        res = n
+        while n > 0:
+            n >>= 1
+            res ^= n
+         
+        return res
+
     def coor_to_num(self, b, x, y):
         b *= 16
         if x%2==0:
             return b+self.binary_to_gray((x*4+y))
         else:
             return b+self.binary_to_gray(x*4+(3-y))
+
+    def num_to_coor(self, n):
+        b = 0
+        if n>15:
+            b = n//16
+            n -= 16*b
+        y = self.gray_to_binary(n)%4
+        x = (self.gray_to_binary(n)-y)//4
+
+        if x%2!=0:
+            y = 3-y
+
+        return (b,x,y)
+
 
     def to_letter(self, n):
         r = []
@@ -53,37 +76,39 @@ class kmap:
         xy = self.coor_to_num(b,x, y)
 
         for i in range(len(self.kmap)):
-            if self.kmap[i][y][x]==1:
+            if self.kmap[i][y][x]==1 or self.kmap[i][y][x]==2:
                 self.groups.append([xy, self.coor_to_num(i, x, y)])
 
         if x+1==4:
-            if self.kmap[b][y][0]==1:
+            if self.kmap[b][y][0]==1 or self.kmap[b][y][0]==2:
                 self.groups.append([xy ,self.coor_to_num(b,0,y)])
         else:
-            if self.kmap[b][y][x+1]==1:
+            if self.kmap[b][y][x+1]==1 or self.kmap[b][y][x+1]==2:
                 self.groups.append([xy ,self.coor_to_num(b,x+1,y)])
         if y+1==4:
-            if self.kmap[b][0][x]==1:
+            if self.kmap[b][0][x]==1 or self.kmap[b][0][x]==2:
                 self.groups.append([xy ,self.coor_to_num(b,x,0)])
         else:
-            if self.kmap[b][y+1][x]==1:
+            if self.kmap[b][y+1][x]==1 or self.kmap[b][y+1][x]==2:
                 self.groups.append([xy ,self.coor_to_num(b,x,y+1)])
 
         if x==0:
-            if self.kmap[b][y][3]==1:
+            if self.kmap[b][y][3]==1 or self.kmap[b][y][3]==2:
                 self.groups.append([xy ,self.coor_to_num(b,3, y)])
         else:
-            if self.kmap[b][y][x-1]==1:
+            if self.kmap[b][y][x-1]==1 or self.kmap[b][y][x-1]==2:
                 self.groups.append([xy ,self.coor_to_num(b,x-1, y)])
 
         if y==0:
-            if self.kmap[b][3][x]==1:
+            if self.kmap[b][3][x]==1 or self.kmap[b][3][x]==2:
                 self.groups.append([xy ,self.coor_to_num(b,x,3)])
         else:
-            if self.kmap[b][y-1][x]==1:
+            if self.kmap[b][y-1][x]==1 or self.kmap[b][y-1][x]==2:
                 self.groups.append([xy ,self.coor_to_num(b,x, y-1)])
 
         self.memo.add(self.coor_to_num(b,x,y))
+        if self.kmap[b][y][x]==1:
+            self.ones.add(self.coor_to_num(b,x,y))
 
         if x+1==4:
             self.make_groups(b, 0, y)
@@ -106,7 +131,7 @@ class kmap:
             self.make_groups(b, x, y-1)
 
     def check_all_ones(self, subset):
-        return self.memo==set(chain.from_iterable(subset))
+        return self.ones.issubset(set(chain.from_iterable(subset)))
 
     def check_all_combinations(self, sg, c, i, j, f=False):
         if i==len(sg):
@@ -127,7 +152,7 @@ class kmap:
                 for y in range(4):
                     if self.coor_to_num(b,x, y) not in self.memo:
                         self.make_groups(b, x, y)
-                    if self.kmap[b][y][x]==1:
+                    if self.kmap[b][y][x]==1 or self.kmap[b][y][x]==2:
                         self.groups.append([self.coor_to_num(b,x,y)]*2)
 
 
@@ -158,7 +183,7 @@ class kmap:
                     m.append((k, n))
 
         r = []
-        all = ones+m
+        allg = ones+m
         prev = m
         for _ in range(5):
             # r = []
@@ -206,9 +231,9 @@ class kmap:
                         r.append(tuple((lg+tuple(t))))
             prev = r
             for x in r:
-                all.append(x)
+                allg.append(x)
                 
-        self.groups = list(set(map(tuple, map(sorted, all))))
+        self.groups = list(set(map(tuple, map(sorted, allg))))
 
         me = []
         for k in range(len(self.groups)):
@@ -233,25 +258,33 @@ class kmap:
                 mini=xi
                 minl = len(x)
 
+        for g in self.res[mini]:
+            r = []
+            for num in g:
+                b,x,y = self.num_to_coor(num)
+                r.append(self.kmap[b][y][x])
+            if all(x==2 for x in r):
+                self.res[mini].remove(g)
+
         return self.res[mini]
 
 if __name__=="__main__":
-    k = kmap([[[1,0,0,1],
-               [1,0,0,1],
-               [1,0,0,1],
-               [1,0,0,1]],
+    k = kmap([[[1,0,0,0],
+               [1,2,1,0],
+               [2,2,2,0],
+               [2,2,0,0]],
               [[1,0,0,1],
-               [1,1,0,1],
-               [1,1,0,1],
+               [1,1,2,1],
+               [1,1,2,1],
                [1,0,0,1]],
-              [[0,1,0,1],
-               [0,1,1,1],
-               [0,0,0,1],
-               [0,1,1,1]],
-              [[1,1,0,1],
-               [0,1,1,1],
-               [1,0,0,1],
-               [1,0,0,1]],
+              # [[0,1,0,1],
+               # [0,1,1,1],
+               # [0,0,0,1],
+               # [0,1,1,1]],
+              # [[1,1,0,1],
+               # [0,1,1,1],
+               # [1,0,0,1],
+               # [1,0,0,1]],
               # [[0,1,1,1],
                # [0,1,1,1],
                # [0,0,0,1],
@@ -269,5 +302,7 @@ if __name__=="__main__":
                # [0,0,1,1],
                # [1,0,1,1]],
               ])
+    # When values entered default remaining to don't care
     sol = k.make_pairs()
+    print(sol)
     print(k.sol_to_letter(sol))
