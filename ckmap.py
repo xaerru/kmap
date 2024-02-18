@@ -51,7 +51,6 @@ class kmap:
             y = 3-y
         return (base,x,y)
 
-
     def to_letter(self, n):
         r = []
         for xi,x in enumerate(bin(n)[2:].zfill(self.nbit)):
@@ -96,7 +95,7 @@ class kmap:
         if self.kmap[b][y][x]==1:
             self.ones.add(bxy_num)
 
-        # Add adjacent nodes from other 4x4 kmaps
+        # Add adjacent nodes from other 4x4 kmaps and the self node
         for base in range(len(self.kmap)):
             if self.kmap[base][y][x] in [1,2]:
                 self.graph.append([bxy_num, self.coor_to_num(base, x, y)])
@@ -130,25 +129,14 @@ class kmap:
         self.check_all_combinations(sg, c, i+1, j+1, False)
         self.check_all_combinations(sg, c, i+1, j, True)
 
-    def get_all_floods(self):
+    def graph_all_floods(self):
         for b in range(len(self.kmap)):
             for x in range(4):
                 for y in range(4):
-                    if self.coor_to_num(b,x, y) not in self.memo:
+                    if self.coor_to_num(b, x, y) not in self.memo:
                         self.flood_and_graph(b, x, y)
-                    if self.kmap[b][y][x] in [1, 2]:
-                        self.graph.append([self.coor_to_num(b,x,y)]*2)
 
-
-    def make_pairs(self):
-        self.get_all_floods();
-        # for g in self.graph:
-            # self.graph.remove([g[1],g[0]])
-        # for g in self.graph:
-            # if g[0]!=g[1]:
-                # print(f"{g[0]}-{g[1]}")
-        m = []
-        ones = []
+    def edge_list_to_adj_list(self):
         adj_list = {}
         for g in self.graph:
             adj_list[g[0]]=set()
@@ -158,6 +146,24 @@ class kmap:
                 adj_list[g[0]].add(g[1])
         for g in self.graph:
             adj_list[g[0]]=sorted(adj_list[g[0]])
+        return adj_list
+
+    def is_valid_graph(self, nodes):
+        for size in range(2, len(nodes) // 2 + 1):
+            for start in range(size):
+                if [nodes[start], nodes[start + size]] not in self.graph:
+                    return False
+        return True
+    def make_pairs(self):
+        self.graph_all_floods();
+        # for g in self.graph:
+            # self.graph.remove([g[1],g[0]])
+        # for g in self.graph:
+            # if g[0]!=g[1]:
+                # print(f"{g[0]}-{g[1]}")
+        adj_list = self.edge_list_to_adj_list()
+        m = []
+        ones = []
 
         for k,v in adj_list.items():
             # print(k,v)
@@ -175,41 +181,26 @@ class kmap:
                 all_adj_lists = []
                 for g in lg:
                     all_adj_lists.append([x for x in adj_list[g] if x not in lg])
-                p = min((map(len, all_adj_lists)))
+                p = min(map(len, all_adj_lists))
                 for i in range(p):
-                    t = []
-                    for j in range(len(all_adj_lists)):
-                        t.append(all_adj_lists[j][i])
+                    t = [all_adj_lists[j][i] for j in range(len(all_adj_lists))]
 
                     fl = True
                     if len(set(t))!=len(t):
                         fl = False
-                        break
-                    # print(lg,t)
-                    # Generalize
-                    h = len(t)//2
-                    for f in range(h):
-                        if [t[f], t[f+h]] not in self.graph:
-                            fl = False
-                            break
-                    h = len(t)//4
-                    for f in range(h):
-                        if [t[f], t[f+h]] not in self.graph:
-                            fl = False
-                            break
-                    h = len(t)//8
-                    for f in range(h):
-                        # print(t[f],t[f+h], [t[f],t[f+h]] in self.graph)
-                        if [t[f], t[f+h]] not in self.graph:
-                            fl = False
-                            break
 
-                    h = len(t)//16
-                    for f in range(h):
-                        # print(t[f],t[f+h], [t[f],t[f+h]] in self.graph)
-                        if [t[f], t[f+h]] not in self.graph:
-                            fl = False
+                    m = 2
+                    while len(t)//m>0:
+                        # # print(t[f],t[f+h], [t[f],t[f+h]] in self.graph)
+                        h = len(t)//m
+                        for f in range(h):
+                            if [t[f], t[f+h]] not in self.graph:
+                                fl = False
+                                break
+                        if not fl:
                             break
+                        m*=2
+                        print(m)
 
                     if fl:
                         r.append(tuple((lg+tuple(t))))
@@ -217,22 +208,22 @@ class kmap:
             for x in r:
                 allg.append(x)
                 
-        self.graph = list(set(map(tuple, map(sorted, allg))))
+        all_groups = list(set(map(tuple, map(sorted, allg))))
 
         me = []
-        for k in range(len(self.graph)):
-            for gk in range(len(self.graph)):
+        for k in range(len(all_groups)):
+            for gk in range(len(all_groups)):
                 if gk!=k:
-                    if set(self.graph[k]).issubset(set(self.graph[gk])):
-                        me.append(self.graph[k])
+                    if set(all_groups[k]).issubset(set(all_groups[gk])):
+                        me.append(all_groups[k])
         for m in me:
-            if m in self.graph:
-                self.graph.remove(m)
-        print("Length of all possible groups:", len(self.graph))
+            if m in all_groups:
+                all_groups.remove(m)
+        print("Length of all possible groups:", len(all_groups))
 
-        # print(len(self.graph))
-        l = [0 for _ in range(len(self.graph))]
-        self.check_all_combinations(copy.deepcopy(self.graph), l, 0, 0)
+        # print(len(all_groups))
+        l = [0 for _ in range(len(all_groups))]
+        self.check_all_combinations(copy.deepcopy(all_groups), l, 0, 0)
 
 
         minl = 100000000
