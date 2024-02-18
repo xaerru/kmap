@@ -12,6 +12,7 @@ class kmap:
     ones = set()
     # Edge list representation of graph of all 1's
     graph = []
+    # All possible groups of len 2,4,8,etc.
     all_groups = []
     # Check if already visited. Used for flood_and_graph
     memo = set()
