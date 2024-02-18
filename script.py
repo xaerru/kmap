@@ -60,6 +60,6 @@ if __name__ == "__main__":
             print()
         print()
 
-    sol = k.make_pairs()
+    sol = k.get_minimal_grouping()
     print("Minimal groups:",*sol)
-    print("Minimal letter sol:", k.sol_to_letter(sol))
+    print("Minimal letter sol:", k.grouping_to_letter(sol))

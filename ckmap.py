@@ -1,4 +1,3 @@
-import copy
 import math
 from itertools import chain
 
@@ -13,9 +12,13 @@ class kmap:
     ones = set()
     # Edge list representation of graph of all 1's
     graph = []
+    all_groups = []
     # Check if already visited. Used for flood_and_graph
     memo = set()
-    res = []
+    # All the groupings which cover all the ones
+    valid_groupings = []
+    # Grouping with minimum number of groups in valid_groupings
+    minimal_group = []
 
     def __init__(self, kmap):
         self.kmap = kmap
@@ -51,7 +54,7 @@ class kmap:
             y = 3-y
         return (base,x,y)
 
-    def to_letter(self, n):
+    def node_to_letter(self, n):
         r = []
         for xi,x in enumerate(bin(n)[2:].zfill(self.nbit)):
             if x=="1":
@@ -62,11 +65,11 @@ class kmap:
 
     def group_to_letter(self, group):
         r = []
-        for el in group:
-            r.append(set(self.to_letter(el)))
+        for node in group:
+            r.append(set(self.node_to_letter(node)))
         return ".".join(sorted(r[0].intersection(*r)))
 
-    def sol_to_letter(self, sol):
+    def grouping_to_letter(self, sol):
         r = []
         for g in sol:
             r.append(self.group_to_letter(g))
@@ -122,7 +125,7 @@ class kmap:
                 return
             subset = [c[x] for x in range(j)]
             if self.check_all_ones(subset):
-                self.res.append(subset)
+                self.valid_groupings.append(subset)
             return
 
         c[j]=sg[i]
@@ -148,100 +151,97 @@ class kmap:
             adj_list[g[0]]=sorted(adj_list[g[0]])
         return adj_list
 
-    def is_valid_graph(self, nodes):
-        for size in range(2, len(nodes) // 2 + 1):
-            for start in range(size):
-                if [nodes[start], nodes[start + size]] not in self.graph:
+    def check_valid_group(self, group):
+        if len(set(group))!=len(group):
+            return False
+
+        m = 2
+        h = len(group)//m
+        while h>0:
+            # # print(t[f],t[f+h], [t[f],t[f+h]] in self.graph)
+            h = len(group)//m
+            m*=2
+            for f in range(h):
+                if [group[f], group[f+h]] not in self.graph:
                     return False
         return True
-    def make_pairs(self):
-        self.graph_all_floods();
+
+
+    def remove_redundant_groups(self):
+        me = []
+        for k in range(len(self.all_groups)):
+            for gk in range(len(self.all_groups)):
+                if gk!=k:
+                    if set(self.all_groups[k]).issubset(set(self.all_groups[gk])):
+                        me.append(self.all_groups[k])
+        for m in me:
+            if m in self.all_groups:
+                self.all_groups.remove(m)
+
+    def make_all_groups(self):
         # for g in self.graph:
             # self.graph.remove([g[1],g[0]])
         # for g in self.graph:
             # if g[0]!=g[1]:
                 # print(f"{g[0]}-{g[1]}")
         adj_list = self.edge_list_to_adj_list()
-        m = []
+
+        twos = []
         ones = []
-
-        for k,v in adj_list.items():
+        for node, adjs in adj_list.items():
             # print(k,v)
-            ones.append((k,))
-            for n in v:
-                if (n,k) not in m:
-                    m.append((k, n))
+            ones.append((node,))
+            for n in adjs:
+                if (n, node) not in twos:
+                    twos.append((node, n))
 
-        r = []
-        allg = ones+m
-        prev = m
-        for _ in range(5):
+        cur_size_groups = []
+        all_size_groups = ones+twos
+        prev_size_groups = twos
+        for _ in range(self.nbit):
             # r = []
-            for lg in prev:
+            for group in prev_size_groups:
                 all_adj_lists = []
-                for g in lg:
-                    all_adj_lists.append([x for x in adj_list[g] if x not in lg])
-                p = min(map(len, all_adj_lists))
-                for i in range(p):
+                for el in group:
+                    all_adj_lists.append([x for x in adj_list[el] if x not in group])
+
+                for i in range(min(map(len, all_adj_lists))):
                     t = [all_adj_lists[j][i] for j in range(len(all_adj_lists))]
+                    if self.check_valid_group(t):
+                        cur_size_groups.append(group+tuple(t))
 
-                    fl = True
-                    if len(set(t))!=len(t):
-                        fl = False
-
-                    m = 2
-                    while len(t)//m>0:
-                        # # print(t[f],t[f+h], [t[f],t[f+h]] in self.graph)
-                        h = len(t)//m
-                        for f in range(h):
-                            if [t[f], t[f+h]] not in self.graph:
-                                fl = False
-                                break
-                        if not fl:
-                            break
-                        m*=2
-                        print(m)
-
-                    if fl:
-                        r.append(tuple((lg+tuple(t))))
-            prev = r
-            for x in r:
-                allg.append(x)
+            prev_size_groups = cur_size_groups
+            for group in cur_size_groups:
+                all_size_groups.append(group)
                 
-        all_groups = list(set(map(tuple, map(sorted, allg))))
+        self.all_groups = list(set(map(tuple, map(sorted, all_size_groups))))
 
-        me = []
-        for k in range(len(all_groups)):
-            for gk in range(len(all_groups)):
-                if gk!=k:
-                    if set(all_groups[k]).issubset(set(all_groups[gk])):
-                        me.append(all_groups[k])
-        for m in me:
-            if m in all_groups:
-                all_groups.remove(m)
-        print("Length of all possible groups:", len(all_groups))
+        self.remove_redundant_groups()
 
-        # print(len(all_groups))
-        l = [0 for _ in range(len(all_groups))]
-        self.check_all_combinations(copy.deepcopy(all_groups), l, 0, 0)
-
-
-        minl = 100000000
-        mini = 0
-        for xi,x in enumerate(self.res):
-            if len(x)<minl:
-                mini=xi
-                minl = len(x)
-
-        for g in self.res[mini]:
+    def remove_dont_care_groups(self):
+        for g in self.minimal_group:
             r = []
             for num in g:
                 b,x,y = self.num_to_coor(num)
                 r.append(self.kmap[b][y][x])
             if all(x==2 for x in r):
-                self.res[mini].remove(g)
+                self.minimal_group.remove(g)
 
-        return self.res[mini]
+    def get_minimal_grouping(self):
+        self.graph_all_floods();
+        self.make_all_groups()
+
+        l = [0 for _ in range(len(self.all_groups))]
+        self.check_all_combinations(self.all_groups, l, 0, 0)
+
+        valid_groupings_len_list = list(map(len, self.valid_groupings))
+        mini = valid_groupings_len_list.index(min(valid_groupings_len_list))
+
+        self.minimal_group = self.valid_groupings[mini]
+
+        self.remove_dont_care_groups()
+
+        return self.minimal_group
 
 if __name__=="__main__":
     k = kmap([[[1,0,0,0],
@@ -252,24 +252,7 @@ if __name__=="__main__":
                [1,1,2,1],
                [1,1,2,1],
                [1,0,0,1]],
-              # [[0,1,1,1],
-               # [0,1,1,1],
-               # [0,0,0,1],
-               # [0,1,1,1]],
-              # [[1,1,0,1],
-               # [0,1,1,1],
-               # [1,0,0,1],
-               # [1,0,0,1]],
-              # [[1,1,0,1],
-               # [0,1,0,1],
-               # [1,1,1,1],
-               # [1,0,1,1]],
-              # [[0,1,0,1],
-               # [0,0,1,1],
-               # [0,0,1,1],
-               # [1,0,1,1]],
               ])
-    # When values entered default remaining to don't care
-    sol = k.make_pairs()
+    sol = k.get_minimal_grouping()
     print(sol)
-    print(k.sol_to_letter(sol))
+    print(k.grouping_to_letter(sol))
