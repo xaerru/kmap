@@ -3,13 +3,19 @@ import math
 from itertools import chain
 
 class kmap:
+    # List of 4x4 kmaps
     kmap = []
-    groups = []
-    memo = set()
-    ones = set()
-    res = []
+    # Number of bits required to represent kmap
     nbit = 0
+    # Letters to represent output
     letters = []
+    # Numbers which should output 1
+    ones = set()
+    # Edge list representation of graph of all 1's
+    graph = []
+    # Check if already visited. Used for flood_and_graph
+    memo = set()
+    res = []
 
     def __init__(self, kmap):
         self.kmap = kmap
@@ -17,36 +23,33 @@ class kmap:
         self.letters = [chr(x) for x in range(64+self.nbit,64, -1)]
 
     def binary_to_gray(self, n):
-        n ^= (n >> 1)
-        return n
+        return n^(n>>1)
 
     def gray_to_binary(self, n):
         res = n
         while n > 0:
             n >>= 1
             res ^= n
-         
         return res
 
-    def coor_to_num(self, b, x, y):
-        b *= 16
+    def coor_to_num(self, base, x, y):
+        base *= 16
         if x%2==0:
-            return b+self.binary_to_gray((x*4+y))
+            return base+self.binary_to_gray((x*4+y))
         else:
-            return b+self.binary_to_gray(x*4+(3-y))
+            return base+self.binary_to_gray(x*4+(3-y))
 
     def num_to_coor(self, n):
-        b = 0
+        base = 0
         if n>15:
-            b = n//16
-            n -= 16*b
+            base = n//16
+            n -= 16*base
         y = self.gray_to_binary(n)%4
         x = (self.gray_to_binary(n)-y)//4
 
         if x%2!=0:
             y = 3-y
-
-        return (b,x,y)
+        return (base,x,y)
 
 
     def to_letter(self, n):
@@ -70,65 +73,46 @@ class kmap:
             r.append(self.group_to_letter(g))
         return " + ".join(r)
 
-    def make_groups(self, b, x, y):
-        if self.kmap[b][y][x]==0 or self.coor_to_num(b,x,y) in self.memo:
+    def check_and_append_edge(self, b, x, y, dx, dy):
+        new_x = (x + dx) % 4
+        new_y = (y + dy) % 4
+        # Check if it's a 1 or a don't care
+        if self.kmap[b][new_y][new_x] in [1, 2]:
+            self.graph.append([self.coor_to_num(b, x, y), self.coor_to_num(b, new_x, new_y)])
+
+    def flood_in_direction(self, b, x, y, dx, dy):
+        new_x = (x + dx) % 4
+        new_y = (y + dy) % 4
+        self.flood_and_graph(b, new_x, new_y)
+
+    def flood_and_graph(self, b, x, y):
+        bxy_num = self.coor_to_num(b, x, y)
+
+        if self.kmap[b][y][x]==0 or bxy_num in self.memo:
             return
-        xy = self.coor_to_num(b,x, y)
 
-        for i in range(len(self.kmap)):
-            if self.kmap[i][y][x]==1 or self.kmap[i][y][x]==2:
-                self.groups.append([xy, self.coor_to_num(i, x, y)])
+        self.memo.add(bxy_num)
 
-        if x+1==4:
-            if self.kmap[b][y][0]==1 or self.kmap[b][y][0]==2:
-                self.groups.append([xy ,self.coor_to_num(b,0,y)])
-        else:
-            if self.kmap[b][y][x+1]==1 or self.kmap[b][y][x+1]==2:
-                self.groups.append([xy ,self.coor_to_num(b,x+1,y)])
-        if y+1==4:
-            if self.kmap[b][0][x]==1 or self.kmap[b][0][x]==2:
-                self.groups.append([xy ,self.coor_to_num(b,x,0)])
-        else:
-            if self.kmap[b][y+1][x]==1 or self.kmap[b][y+1][x]==2:
-                self.groups.append([xy ,self.coor_to_num(b,x,y+1)])
-
-        if x==0:
-            if self.kmap[b][y][3]==1 or self.kmap[b][y][3]==2:
-                self.groups.append([xy ,self.coor_to_num(b,3, y)])
-        else:
-            if self.kmap[b][y][x-1]==1 or self.kmap[b][y][x-1]==2:
-                self.groups.append([xy ,self.coor_to_num(b,x-1, y)])
-
-        if y==0:
-            if self.kmap[b][3][x]==1 or self.kmap[b][3][x]==2:
-                self.groups.append([xy ,self.coor_to_num(b,x,3)])
-        else:
-            if self.kmap[b][y-1][x]==1 or self.kmap[b][y-1][x]==2:
-                self.groups.append([xy ,self.coor_to_num(b,x, y-1)])
-
-        self.memo.add(self.coor_to_num(b,x,y))
         if self.kmap[b][y][x]==1:
-            self.ones.add(self.coor_to_num(b,x,y))
+            self.ones.add(bxy_num)
 
-        if x+1==4:
-            self.make_groups(b, 0, y)
-        else:
-            self.make_groups(b, x+1, y)
+        # Add adjacent nodes from other 4x4 kmaps
+        for base in range(len(self.kmap)):
+            if self.kmap[base][y][x] in [1,2]:
+                self.graph.append([bxy_num, self.coor_to_num(base, x, y)])
 
-        if y+1==4:
-            self.make_groups(b, x, 0)
-        else:
-            self.make_groups(b, x, y+1)
+        # Check if we find an adjacent 1 or a don't care in the same 4x4 kmap
+        # If yes then append it to the graph
+        self.check_and_append_edge(b, x, y, 1, 0)  # Right
+        self.check_and_append_edge(b, x, y, 0, 1)  # Down
+        self.check_and_append_edge(b, x, y, -1, 0) # Left
+        self.check_and_append_edge(b, x, y, 0, -1) # Up
 
-        if x==0:
-            self.make_groups(b, 3, y)
-        else:
-            self.make_groups(b, x-1, y)
-
-        if y==0:
-            self.make_groups(b, x, 3)
-        else:
-            self.make_groups(b, x, y-1)
+        # Recursively flood
+        self.flood_in_direction(b, x, y, 1, 0)  # Right
+        self.flood_in_direction(b, x, y, 0, 1)  # Down
+        self.flood_in_direction(b, x, y, -1, 0) # Left
+        self.flood_in_direction(b, x, y, 0, -1) # Up
 
     def check_all_ones(self, subset):
         return self.ones.issubset(set(chain.from_iterable(subset)))
@@ -146,33 +130,33 @@ class kmap:
         self.check_all_combinations(sg, c, i+1, j+1, False)
         self.check_all_combinations(sg, c, i+1, j, True)
 
-    def make_all_groups(self):
+    def get_all_floods(self):
         for b in range(len(self.kmap)):
             for x in range(4):
                 for y in range(4):
                     if self.coor_to_num(b,x, y) not in self.memo:
-                        self.make_groups(b, x, y)
-                    if self.kmap[b][y][x]==1 or self.kmap[b][y][x]==2:
-                        self.groups.append([self.coor_to_num(b,x,y)]*2)
+                        self.flood_and_graph(b, x, y)
+                    if self.kmap[b][y][x] in [1, 2]:
+                        self.graph.append([self.coor_to_num(b,x,y)]*2)
 
 
     def make_pairs(self):
-        self.make_all_groups();
-        # for g in self.groups:
-            # self.groups.remove([g[1],g[0]])
-        # for g in self.groups:
+        self.get_all_floods();
+        # for g in self.graph:
+            # self.graph.remove([g[1],g[0]])
+        # for g in self.graph:
             # if g[0]!=g[1]:
                 # print(f"{g[0]}-{g[1]}")
         m = []
         ones = []
         adj_list = {}
-        for g in self.groups:
+        for g in self.graph:
             adj_list[g[0]]=set()
             adj_list[g[1]]=set()
-        for g in self.groups:
+        for g in self.graph:
             if g[0]!=g[1]:
                 adj_list[g[0]].add(g[1])
-        for g in self.groups:
+        for g in self.graph:
             adj_list[g[0]]=sorted(adj_list[g[0]])
 
         for k,v in adj_list.items():
@@ -205,25 +189,25 @@ class kmap:
                     # Generalize
                     h = len(t)//2
                     for f in range(h):
-                        if [t[f], t[f+h]] not in self.groups:
+                        if [t[f], t[f+h]] not in self.graph:
                             fl = False
                             break
                     h = len(t)//4
                     for f in range(h):
-                        if [t[f], t[f+h]] not in self.groups:
+                        if [t[f], t[f+h]] not in self.graph:
                             fl = False
                             break
                     h = len(t)//8
                     for f in range(h):
-                        # print(t[f],t[f+h], [t[f],t[f+h]] in self.groups)
-                        if [t[f], t[f+h]] not in self.groups:
+                        # print(t[f],t[f+h], [t[f],t[f+h]] in self.graph)
+                        if [t[f], t[f+h]] not in self.graph:
                             fl = False
                             break
 
                     h = len(t)//16
                     for f in range(h):
-                        # print(t[f],t[f+h], [t[f],t[f+h]] in self.groups)
-                        if [t[f], t[f+h]] not in self.groups:
+                        # print(t[f],t[f+h], [t[f],t[f+h]] in self.graph)
+                        if [t[f], t[f+h]] not in self.graph:
                             fl = False
                             break
 
@@ -233,22 +217,22 @@ class kmap:
             for x in r:
                 allg.append(x)
                 
-        self.groups = list(set(map(tuple, map(sorted, allg))))
+        self.graph = list(set(map(tuple, map(sorted, allg))))
 
         me = []
-        for k in range(len(self.groups)):
-            for gk in range(len(self.groups)):
+        for k in range(len(self.graph)):
+            for gk in range(len(self.graph)):
                 if gk!=k:
-                    if set(self.groups[k]).issubset(set(self.groups[gk])):
-                        me.append(self.groups[k])
+                    if set(self.graph[k]).issubset(set(self.graph[gk])):
+                        me.append(self.graph[k])
         for m in me:
-            if m in self.groups:
-                self.groups.remove(m)
-        print("Length of all possible groups:", len(self.groups))
+            if m in self.graph:
+                self.graph.remove(m)
+        print("Length of all possible groups:", len(self.graph))
 
-        # print(len(self.groups))
-        l = [0 for _ in range(len(self.groups))]
-        self.check_all_combinations(copy.deepcopy(self.groups), l, 0, 0)
+        # print(len(self.graph))
+        l = [0 for _ in range(len(self.graph))]
+        self.check_all_combinations(copy.deepcopy(self.graph), l, 0, 0)
 
 
         minl = 100000000
@@ -277,14 +261,6 @@ if __name__=="__main__":
                [1,1,2,1],
                [1,1,2,1],
                [1,0,0,1]],
-              # [[0,1,0,1],
-               # [0,1,1,1],
-               # [0,0,0,1],
-               # [0,1,1,1]],
-              # [[1,1,0,1],
-               # [0,1,1,1],
-               # [1,0,0,1],
-               # [1,0,0,1]],
               # [[0,1,1,1],
                # [0,1,1,1],
                # [0,0,0,1],
@@ -303,6 +279,6 @@ if __name__=="__main__":
                # [1,0,1,1]],
               ])
     # When values entered default remaining to don't care
-    # sol = k.make_pairs()
-    # print(sol)
-    # print(k.sol_to_letter(sol))
+    sol = k.make_pairs()
+    print(sol)
+    print(k.sol_to_letter(sol))
