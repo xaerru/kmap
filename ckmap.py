@@ -202,6 +202,14 @@ class kmap:
             if m in self.all_groups:
                 self.all_groups.remove(m)
 
+        for g in self.all_groups:
+            r = []
+            for num in g:
+                b,x,y = self.num_to_coor(num)
+                r.append(self.kmap[b][y][x])
+            if all(x==2 for x in r):
+                self.all_groups.remove(g)
+
     def make_all_groups(self):
         # for g in self.graph:
             # self.graph.remove([g[1],g[0]])
