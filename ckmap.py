@@ -2,34 +2,58 @@ import math
 from itertools import chain
 
 class kmap:
-    # List of 4x4 kmaps
-    kmap = []
-    # Number of bits required to represent kmap
-    nbit = 0
-    # Letters to represent output
-    letters = []
-    # Numbers which should output 1
-    ones = set()
-    # Edge list representation of graph of all 1's
-    graph = []
-    # All possible groups of len 2,4,8,etc.
-    all_groups = []
-    # Check if already visited. Used for flood_and_graph
-    memo = set()
-    # All the groupings which cover all the ones
-    valid_groupings = []
-    # Grouping with minimum number of groups in valid_groupings
-    minimal_group = []
-
-    def __init__(self, kmap):
-        self.kmap = kmap
-        self.nbit = 4+math.floor(math.log(len(kmap))/math.log(2))
+    def __init__(self, arr):
+        # List of 4x4 kmaps
+        self.kmap = arr
+        # Letters to represent output
         self.letters = [chr(x) for x in range(64+self.nbit,64, -1)]
+        # Numbers which should output 1
+        self.ones = set()
+        # Edge list representation of graph of all 1's
+        self.graph = []
+        # All possible groups of len 2,4,8,etc.
+        self.all_groups = []
+        # Check if already visited. Used for flood_and_graph
+        self.memo = set()
+        # All the groupings which cover all the ones
+        self.valid_groupings = []
+        # Grouping with minimum number of groups in valid_groupings
+        self.minimal_group = []
+
+    def next_pow_of_2(self, n):
+        if not (n & (n - 1)):
+            return n
+        return  int("1" + (len(bin(n)) - 2) * "0", 2)
+
+    @classmethod
+    def from_arr(cls, arr):
+        cls.nbit = 4+math.floor(math.log(len(arr))/math.log(2))
+        c = cls(arr)
+        return c
+
+    @classmethod
+    def from_minterm_and_dont_care(cls, minterms, dont_cares):
+        max_num = max(max(minterms), max(dont_cares, default=0))
+        cls.nbit = math.floor(math.log2(max_num))+1
+
+        arr = [[[0,0,0,0],
+               [0,0,0,0],
+               [0,0,0,0],
+               [0,0,0,0]] for x in range(math.ceil(2**(cls.nbit-4)))]
+
+        for m in minterms:
+            b,x,y = cls.num_to_coor(m)
+            arr[b][y][x]=1
+        for t in dont_cares:
+            b,x,y = cls.num_to_coor(t)
+            arr[b][y][x]=2
+        return cls(arr)
 
     def binary_to_gray(self, n):
         return n^(n>>1)
 
-    def gray_to_binary(self, n):
+    @classmethod
+    def gray_to_binary(cls, n):
         res = n
         while n > 0:
             n >>= 1
@@ -43,13 +67,14 @@ class kmap:
         else:
             return base+self.binary_to_gray(x*4+(3-y))
 
-    def num_to_coor(self, n):
+    @classmethod
+    def num_to_coor(cls, n):
         base = 0
         if n>15:
             base = n//16
             n -= 16*base
-        y = self.gray_to_binary(n)%4
-        x = (self.gray_to_binary(n)-y)//4
+        y = cls.gray_to_binary(n)%4
+        x = (cls.gray_to_binary(n)-y)//4
 
         if x%2!=0:
             y = 3-y
@@ -120,18 +145,16 @@ class kmap:
     def check_all_ones(self, subset):
         return self.ones.issubset(set(chain.from_iterable(subset)))
 
-    def check_all_combinations(self, sg, c, i, j, f=False):
+    def check_all_combinations(self, sg, c, i, j):
         if i==len(sg):
-            if f:
-                return
             subset = [c[x] for x in range(j)]
             if self.check_all_ones(subset):
                 self.valid_groupings.append(subset)
             return
 
         c[j]=sg[i]
-        self.check_all_combinations(sg, c, i+1, j+1, False)
-        self.check_all_combinations(sg, c, i+1, j, True)
+        self.check_all_combinations(sg, c, i+1, j+1)
+        self.check_all_combinations(sg, c, i+1, j)
 
     def graph_all_floods(self):
         for b in range(len(self.kmap)):
@@ -243,17 +266,3 @@ class kmap:
         self.remove_dont_care_groups()
 
         return self.minimal_group
-
-if __name__=="__main__":
-    k = kmap([[[1,0,0,0],
-               [1,2,1,0],
-               [2,2,2,0],
-               [2,2,0,0]],
-              [[1,0,0,1],
-               [1,1,2,1],
-               [1,1,2,1],
-               [1,0,0,1]],
-              ])
-    sol = k.get_minimal_grouping()
-    print(sol)
-    print(k.grouping_to_letter(sol))
